@@ -7,13 +7,32 @@ import pickle
 import emoji
 from nltk.corpus import stopwords
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.models import load_model
+import tensorflow as tf
 
 # -------------------
-# Load model + tokenizer
+# Model parameters
 # -------------------
-model = load_model("model_BI.keras")
+vocab_size = 81415
+maxlen = 40
 
+# -------------------
+# Load model architecture + weights
+# -------------------
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Embedding(vocab_size, 32, input_shape=[maxlen]),
+    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=False)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Dropout(0.25),
+    tf.keras.layers.Dense(1, activation="sigmoid")
+])
+
+model.load_weights("weights.weights.h5")
+
+# -------------------
+# Load tokenizer
+# -------------------
 with open("tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
 
@@ -71,13 +90,13 @@ if st.button("Analyze"):
 
         # Tokenize
         seq = tokenizer.texts_to_sequences([clean_text])
-        padded = pad_sequences(seq, maxlen=100)  # use same maxlen from training
+        padded = pad_sequences(seq, maxlen=maxlen)  # use maxlen = 40
 
         # Prediction
         pred = model.predict(padded)[0][0]
 
         # Output
         if pred >= 0.5:
-            st.success(f"✅ Positive 😀 (score: {pred:.4f})")
+            st.success(f"✅ Positive (score: {pred:.4f})")
         else:
-            st.error(f"❌ Negative 😞 (score: {pred:.4f})")
+            st.error(f"❌ Negative (score: {pred:.4f})")
