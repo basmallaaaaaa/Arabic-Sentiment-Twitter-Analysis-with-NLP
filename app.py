@@ -1,43 +1,41 @@
-﻿import nltk
-nltk.download('stopwords')
-
+﻿import tensorflow as tf
+import pickle
 import streamlit as st
 import re
-import pickle
 import emoji
 from nltk.corpus import stopwords
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import tensorflow as tf
+import nltk
+nltk.download('stopwords')
 
-# -------------------
-# Model parameters
-# -------------------
 vocab_size = 81415
 maxlen = 40
 
 # -------------------
-# Load model architecture + weights
+# Model architecture function
 # -------------------
-model = tf.keras.models.Sequential([
-    tf.keras.layers.Embedding(vocab_size, 32, input_shape=[maxlen]),
-    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
-    tf.keras.layers.BatchNormalization(),
-    tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=False)),
-    tf.keras.layers.BatchNormalization(),
-    tf.keras.layers.Dropout(0.25),
-    tf.keras.layers.Dense(1, activation="sigmoid")
-])
+def build_model():
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Embedding(vocab_size, 32, input_shape=[maxlen]),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=True)),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(32, return_sequences=False)),
+        tf.keras.layers.BatchNormalization(),
+        tf.keras.layers.Dropout(0.25),
+        tf.keras.layers.Dense(1, activation="sigmoid")
+    ])
+    return model
 
+# Load model + weights
+model = build_model()
 model.load_weights("weights.weights.h5")
 
-# -------------------
 # Load tokenizer
-# -------------------
 with open("tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
 
 # -------------------
-# Preprocessing functions
+# Preprocessing
 # -------------------
 pun = '''!()-[]{};:'"\,<>./?@#$%^&*_~'''
 stopwords_list = stopwords.words('arabic') + stopwords.words('english')
@@ -75,28 +73,20 @@ def preprocess(text):
 # Streamlit UI
 # -------------------
 st.set_page_config(page_title="Arabic Sentiment Analysis", page_icon="✨")
+st.title("Arabic Twitter Sentiment Analysis")
+st.write("BiLSTM model to classify tweets into Positive / Negative sentiment")
 
-st.title("✨ Arabic Twitter Sentiment Analysis")
-st.write("🚀 BiLSTM model to classify tweets into Positive / Negative sentiment")
-
-user_input = st.text_area("📝 Enter your tweet:")
+user_input = st.text_area("Enter your tweet:")
 
 if st.button("Analyze"):
     if user_input.strip() == "":
-        st.warning("⚠️ Please enter a tweet first")
+        st.warning("Please enter a tweet first")
     else:
-        # Preprocess
         clean_text = preprocess(user_input)
-
-        # Tokenize
         seq = tokenizer.texts_to_sequences([clean_text])
-        padded = pad_sequences(seq, maxlen=maxlen)  # use maxlen = 40
-
-        # Prediction
+        padded = pad_sequences(seq, maxlen=maxlen)
         pred = model.predict(padded)[0][0]
-
-        # Output
         if pred >= 0.5:
-            st.success(f"✅ Positive (score: {pred:.4f})")
+            st.success(f"Positive (score: {pred:.4f})")
         else:
-            st.error(f"❌ Negative (score: {pred:.4f})")
+            st.error(f"Negative (score: {pred:.4f})")
