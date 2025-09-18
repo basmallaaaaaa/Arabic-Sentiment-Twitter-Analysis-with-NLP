@@ -12,7 +12,7 @@ from tensorflow.keras.models import load_model
 # -------------------
 # Load model + tokenizer
 # -------------------
-model = load_model("model_BI.h5")
+model = load_model("model_BI.keras")
 
 with open("tokenizer.pkl", "rb") as f:
     tokenizer = pickle.load(f)
